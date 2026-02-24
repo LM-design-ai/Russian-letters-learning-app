@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Буквы — Russian Letter Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Noto+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0b1a;
+    --surface: #16112b;
+    --card: #1e1836;
+    --accent: #e8c547;
+    --accent2: #c45fe8;
+    --green: #5fe8a0;
+    --red: #e85f5f;
+    --text: #f0eaff;
+    --muted: #8878aa;
+    --border: rgba(232,197,71,0.2);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 15% 20%, rgba(232,197,71,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 10%, rgba(196,95,232,0.3) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 40% 80%, rgba(232,197,71,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 60%, rgba(95,232,160,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 5% 70%, rgba(232,197,71,0.2) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  header {
+    width: 100%;
+    padding: 28px 40px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .logo { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 1.4rem; letter-spacing: -0.02em; color: var(--accent); }
+  .logo span { color: var(--accent2); }
+  .level-badge {
+    font-family: 'Unbounded', sans-serif; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 14px;
+    border: 1px solid var(--border); border-radius: 100px; color: var(--muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .level-badge:hover { border-color: var(--accent); color: var(--accent); }
+  main {
+    flex: 1; width: 100%; max-width: 680px;
+    padding: 40px 20px 60px;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+    position: relative; z-index: 1;
+  }
+  .progress-row { width: 100%; display: flex; gap: 8px; align-items: center; }
+  .progress-pip { flex: 1; height: 4px; background: var(--card); border-radius: 2px; transition: background 0.4s; }
+  .progress-pip.done { background: var(--green); }
+  .progress-pip.active { background: var(--accent); }
+  .progress-pip.wrong { background: var(--red); }
+  .score-row {
+    width: 100%; display: flex; justify-content: space-between;
+    font-family: 'Unbounded', sans-serif; font-size: 0.65rem;
+    letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
+  }
+  .score-row .val { color: var(--text); }
+  .card {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: 24px; padding: 48px 40px 40px;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(232,197,71,0.06), transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* Reveal zone — shown AFTER submit in letter modes */
+  .reveal-zone {
+    min-height: 96px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+  }
+  .reveal-letter {
+    font-size: 6rem; font-family: 'Noto Serif', serif; font-weight: 400;
+    color: var(--accent); line-height: 1; text-align: center; letter-spacing: -0.02em;
+  }
+  .reveal-letter.animate { animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .reveal-label {
+    font-family: 'Unbounded', sans-serif; font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  }
+  .reveal-placeholder {
+    width: 80px; height: 80px; border: 2px dashed rgba(232,197,71,0.2);
+    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  }
+  .reveal-placeholder .q-mark {
+    font-size: 2.5rem; font-family: 'Unbounded', sans-serif; color: rgba(232,197,71,0.2);
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .word-picture { font-size: 4.5rem; line-height: 1; animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  .speak-btn {
+    background: none; border: 1px solid var(--border); border-radius: 100px;
+    padding: 10px 22px; color: var(--accent);
+    font-family: 'Unbounded', sans-serif; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .speak-btn:hover { background: rgba(232,197,71,0.08); border-color: var(--accent); }
+  .speak-btn svg { width: 16px; height: 16px; }
+  .instruction { font-size: 0.9rem; color: var(--muted); text-align: center; line-height: 1.5; }
+  .instruction strong { color: var(--text); }
+  .word-hint { font-size: 0.8rem; color: var(--muted); text-align: center; font-style: italic; }
+
+  .input-area { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .char-input {
+    width: 100%; max-width: 320px; background: var(--surface);
+    border: 2px solid var(--border); border-radius: 14px; padding: 16px 24px;
+    font-size: 2rem; font-family: 'Noto Serif', serif; color: var(--text);
+    text-align: center; outline: none; transition: border-color 0.2s; letter-spacing: 0.1em;
+  }
+  .char-input:focus { border-color: var(--accent); }
+  .char-input.shake { animation: shake 0.4s ease; border-color: var(--red); }
+  .char-input.correct-flash { border-color: var(--green); animation: flash-green 0.4s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-10px); }
+    40% { transform: translateX(10px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+  @keyframes flash-green {
+    0% { background: rgba(95,232,160,0.15); }
+    100% { background: transparent; }
+  }
+  .attempts-row { display: flex; gap: 8px; align-items: center; }
+  .attempt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transition: background 0.3s; }
+  .attempt-dot.used { background: var(--red); }
+  .feedback {
+    font-size: 0.85rem; font-family: 'Unbounded', sans-serif; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; min-height: 20px; transition: color 0.2s;
+  }
+  .feedback.ok { color: var(--green); }
+  .feedback.err { color: var(--red); }
+  .feedback.hint { color: var(--accent2); }
+  .submit-btn {
+    background: var(--accent); color: var(--bg); border: none; border-radius: 12px;
+    padding: 14px 40px; font-family: 'Unbounded', sans-serif; font-weight: 700;
+    font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,197,71,0.3); }
+  .submit-btn:active { transform: translateY(0); }
+
+  .results-card {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: 24px; padding: 48px 40px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+  }
+  .results-title { font-family: 'Unbounded', sans-serif; font-size: 1.6rem; font-weight: 900; color: var(--accent); letter-spacing: -0.02em; }
+  .results-score-big { font-family: 'Unbounded', sans-serif; font-size: 4rem; font-weight: 900; line-height: 1; color: var(--text); }
+  .results-score-big span { color: var(--accent2); }
+  .results-grid { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 8px 0; }
+  .res-cell { background: var(--surface); border-radius: 10px; padding: 10px 4px; text-align: center; font-size: 1.4rem; position: relative; }
+  .res-cell .mark { position: absolute; top: 4px; right: 6px; font-size: 0.6rem; }
+  .res-cell .answer { font-size: 0.65rem; color: var(--muted); font-family: 'Unbounded',sans-serif; display: block; margin-top: 2px; }
+  .res-cell.ok .mark { color: var(--green); }
+  .res-cell.wrong .mark { color: var(--red); }
+  .res-cell.ok { border: 1px solid rgba(95,232,160,0.3); }
+  .res-cell.wrong { border: 1px solid rgba(232,95,95,0.3); }
+  .next-btn {
+    background: var(--accent2); color: white; border: none; border-radius: 12px;
+    padding: 14px 40px; font-family: 'Unbounded', sans-serif; font-weight: 700;
+    font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .next-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(196,95,232,0.35); }
+  .mode-select { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  .mode-title { font-family: 'Unbounded', sans-serif; font-size: 1.2rem; font-weight: 900; color: var(--text); text-align: center; margin-bottom: 8px; }
+  .mode-btn {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 28px; cursor: pointer; text-align: left;
+    transition: all 0.2s; display: flex; gap: 16px; align-items: center;
+  }
+  .mode-btn:hover { border-color: var(--accent); background: rgba(232,197,71,0.05); }
+  .mode-icon { font-size: 2rem; }
+  .mode-name { font-family: 'Unbounded', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .mode-desc { font-size: 0.8rem; color: var(--muted); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Бук<span>вы</span></div>
+  <div class="level-badge" onclick="showModeSelect()">Change Level</div>
+</header>
+
+<main id="mainArea">
+
+  <!-- Mode Select Screen -->
+  <div id="modeSelectScreen" class="mode-select">
+    <div class="mode-title">Choose your level</div>
+    <button class="mode-btn" onclick="startMode('lower')">
+      <div class="mode-icon">а</div>
+      <div class="mode-info">
+        <div class="mode-name">Lowercase Letters</div>
+        <div class="mode-desc">Hear a letter, recall and type its lowercase form</div>
+      </div>
+    </button>
+    <button class="mode-btn" onclick="startMode('upper')">
+      <div class="mode-icon">А</div>
+      <div class="mode-info">
+        <div class="mode-name">Uppercase Letters</div>
+        <div class="mode-desc">Hear a letter, recall and type its uppercase form</div>
+      </div>
+    </button>
+    <button class="mode-btn" onclick="startMode('words')">
+      <div class="mode-icon">🖼️</div>
+      <div class="mode-info">
+        <div class="mode-name">3-Letter Words</div>
+        <div class="mode-desc">See a picture, type the Russian word</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:28px;">
+    <div class="progress-row" id="progressRow"></div>
+    <div class="score-row">
+      <span>Question <span class="val" id="qNum">1</span> of 10</span>
+      <span>Score <span class="val" id="scoreDisp">0</span></span>
+    </div>
+    <div class="card" id="mainCard">
+      <!-- For word mode: emoji picture -->
+      <div id="wordPic" class="word-picture hidden"></div>
+
+      <!-- Reveal zone: placeholder before submit, letter after submit (letter modes only) -->
+      <div id="revealZone" class="reveal-zone hidden">
+        <div id="revealPlaceholder" class="reveal-placeholder"><span class="q-mark">?</span></div>
+        <div id="revealLetter" class="reveal-letter hidden"></div>
+        <div id="revealLabel" class="reveal-label hidden"></div>
+      </div>
+
+      <button class="speak-btn" id="speakBtn" onclick="speakCurrent()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        Play Again
+      </button>
+      <div class="instruction" id="instruction"></div>
+      <div id="wordHint" class="word-hint hidden"></div>
+      <div class="input-area">
+        <input type="text" class="char-input" id="charInput" placeholder="Type here…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="attempts-row" id="attemptsRow">
+          <div class="attempt-dot" id="dot0"></div>
+          <div class="attempt-dot" id="dot1"></div>
+        </div>
+        <div class="feedback" id="feedback"></div>
+        <button class="submit-btn" onclick="checkAnswer()">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Screen -->
+  <div id="resultsScreen" class="hidden" style="width:100%">
+    <div class="results-card">
+      <div class="results-title">Round Complete!</div>
+      <div class="results-score-big" id="finalScore">0<span>/10</span></div>
+      <div class="results-grid" id="resultsGrid"></div>
+      <button class="next-btn" onclick="showModeSelect()">Play Again</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const LETTERS = ['а','б','в','г','д','е','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','ъ','ы','ь','э','ю','я'];
+
+const WORDS = [
+  // Animals
+  { word: 'кот',   meaning: 'cat',         emoji: '🐱' },
+  { word: 'пёс',   meaning: 'dog',         emoji: '🐶' },
+  { word: 'лис',   meaning: 'fox',         emoji: '🦊' },
+  { word: 'рак',   meaning: 'crab',        emoji: '🦀' },
+  { word: 'бык',   meaning: 'bull',        emoji: '🐂' },
+  { word: 'жук',   meaning: 'beetle',      emoji: '🐞' },
+  { word: 'вол',   meaning: 'ox',          emoji: '🐃' },
+  { word: 'лев',   meaning: 'lion',        emoji: '🦁' },
+  { word: 'кит',   meaning: 'whale',       emoji: '🐳' },
+  { word: 'уж',    meaning: 'grass snake', emoji: '🐍' },
+  { word: 'ёж',    meaning: 'hedgehog',    emoji: '🦔' },
+  { word: 'конь',  meaning: 'horse',       emoji: '🐴' },
+  { word: 'тур',   meaning: 'bison',       emoji: '🦬' },
+  { word: 'мышь',  meaning: 'mouse',       emoji: '🐭' },
+  { word: 'вол',   meaning: 'ox',          emoji: '🐄' },
+  { word: 'орёл',  meaning: 'eagle',       emoji: '🦅' },
+  { word: 'гусь',  meaning: 'goose',       emoji: '🪿' },
+  { word: 'ягнёнок', meaning: 'lamb',      emoji: '🐑' },
+  // Body
+  { word: 'рот',   meaning: 'mouth',       emoji: '👄' },
+  { word: 'нос',   meaning: 'nose',        emoji: '👃' },
+  { word: 'ухо',   meaning: 'ear',         emoji: '👂' },
+  { word: 'лоб',   meaning: 'forehead',    emoji: '😐' },
+  { word: 'бок',   meaning: 'side (body)', emoji: '🫀' },
+  { word: 'зуб',   meaning: 'tooth',       emoji: '🦷' },
+  { word: 'глаз',  meaning: 'eye',         emoji: '👁️' },
+  { word: 'рука',  meaning: 'hand/arm',    emoji: '🖐️' },
+  { word: 'нога',  meaning: 'leg/foot',    emoji: '🦶' },
+  // Nature
+  { word: 'лёд',   meaning: 'ice',         emoji: '🧊' },
+  { word: 'мёд',   meaning: 'honey',       emoji: '🍯' },
+  { word: 'дуб',   meaning: 'oak tree',    emoji: '🌳' },
+  { word: 'луг',   meaning: 'meadow',      emoji: '🌿' },
+  { word: 'лес',   meaning: 'forest',      emoji: '🌲' },
+  { word: 'мох',   meaning: 'moss',        emoji: '🍀' },
+  { word: 'пар',   meaning: 'steam',       emoji: '♨️' },
+  { word: 'гром',  meaning: 'thunder',     emoji: '⛈️' },
+  { word: 'снег',  meaning: 'snow',        emoji: '❄️' },
+  { word: 'дым',   meaning: 'smoke',       emoji: '💨' },
+  { word: 'жар',   meaning: 'heat',        emoji: '🔥' },
+  { word: 'гора',  meaning: 'mountain',    emoji: '⛰️' },
+  { word: 'река',  meaning: 'river',       emoji: '🏞️' },
+  { word: 'море',  meaning: 'sea',         emoji: '🌊' },
+  { word: 'луна',  meaning: 'moon',        emoji: '🌙' },
+  { word: 'звезда',meaning: 'star',        emoji: '⭐' },
+  // Food & drink
+  { word: 'лук',   meaning: 'onion',       emoji: '🧅' },
+  { word: 'рис',   meaning: 'rice',        emoji: '🍚' },
+  { word: 'сок',   meaning: 'juice',       emoji: '🧃' },
+  { word: 'чай',   meaning: 'tea',         emoji: '🍵' },
+  { word: 'суп',   meaning: 'soup',        emoji: '🍲' },
+  { word: 'хлеб',  meaning: 'bread',       emoji: '🍞' },
+  { word: 'торт',  meaning: 'cake',        emoji: '🎂' },
+  { word: 'сыр',   meaning: 'cheese',      emoji: '🧀' },
+  { word: 'яйцо',  meaning: 'egg',         emoji: '🥚' },
+  { word: 'гриб',  meaning: 'mushroom',    emoji: '🍄' },
+  { word: 'орех',  meaning: 'nut',         emoji: '🌰' },
+  { word: 'груша', meaning: 'pear',        emoji: '🍐' },
+  { word: 'слива', meaning: 'plum',        emoji: '🫐' },
+  { word: 'вишня', meaning: 'cherry',      emoji: '🍒' },
+  { word: 'соль',  meaning: 'salt',        emoji: '🧂' },
+  { word: 'молоко',meaning: 'milk',        emoji: '🥛' },
+  { word: 'кофе',  meaning: 'coffee',      emoji: '☕' },
+  { word: 'вода',  meaning: 'water',       emoji: '💧' },
+  { word: 'мясо',  meaning: 'meat',        emoji: '🥩' },
+  { word: 'рыба',  meaning: 'fish (food)', emoji: '🐟' },
+  // Home & objects
+  { word: 'дом',   meaning: 'house',       emoji: '🏠' },
+  { word: 'стол',  meaning: 'table',       emoji: '🪑' },
+  { word: 'дверь', meaning: 'door',        emoji: '🚪' },
+  { word: 'окно',  meaning: 'window',      emoji: '🪟' },
+  { word: 'ключ',  meaning: 'key',         emoji: '🔑' },
+  { word: 'нож',   meaning: 'knife',       emoji: '🔪' },
+  { word: 'шар',   meaning: 'sphere/ball', emoji: '⚽' },
+  { word: 'флаг',  meaning: 'flag',        emoji: '🚩' },
+  { word: 'мяч',   meaning: 'sports ball', emoji: '🏀' },
+  { word: 'сад',   meaning: 'garden',      emoji: '🌻' },
+  { word: 'лист',  meaning: 'leaf/sheet',  emoji: '🍃' },
+  { word: 'замок', meaning: 'castle',      emoji: '🏰' },
+  { word: 'книга', meaning: 'book',        emoji: '📚' },
+  { word: 'лампа', meaning: 'lamp',        emoji: '💡' },
+  { word: 'часы',  meaning: 'clock',       emoji: '🕐' },
+  // Transport
+  { word: 'путь',  meaning: 'path',        emoji: '🛤️' },
+  { word: 'мост',  meaning: 'bridge',      emoji: '🌉' },
+  { word: 'порт',  meaning: 'port',        emoji: '⚓' },
+  { word: 'ход',   meaning: 'move/step',   emoji: '🚶' },
+  { word: 'пуск',  meaning: 'launch',      emoji: '🚀' },
+  { word: 'поезд', meaning: 'train',       emoji: '🚂' },
+  // People & roles
+  { word: 'мать',  meaning: 'mother',      emoji: '👩' },
+  { word: 'сын',   meaning: 'son',         emoji: '👦' },
+  { word: 'дочь',  meaning: 'daughter',    emoji: '👧' },
+  { word: 'брат',  meaning: 'brother',     emoji: '🧑' },
+  { word: 'друг',  meaning: 'friend',      emoji: '🤝' },
+  { word: 'враг',  meaning: 'enemy',       emoji: '😡' },
+  { word: 'царь',  meaning: 'tsar',        emoji: '👑' },
+  { word: 'врач',  meaning: 'doctor',      emoji: '🩺' },
+  { word: 'граф',  meaning: 'count',       emoji: '🎩' },
+  // Concepts & abstract
+  { word: 'цвет',  meaning: 'colour',      emoji: '🌈' },
+  { word: 'свет',  meaning: 'light',       emoji: '💡' },
+  { word: 'тень',  meaning: 'shadow',      emoji: '🌑' },
+  { word: 'день',  meaning: 'day',         emoji: '☀️' },
+  { word: 'ночь',  meaning: 'night',       emoji: '🌃' },
+  { word: 'год',   meaning: 'year',        emoji: '📅' },
+  { word: 'час',   meaning: 'hour',        emoji: '⏰' },
+  { word: 'миг',   meaning: 'instant',     emoji: '⚡' },
+  { word: 'шум',   meaning: 'noise',       emoji: '🔊' },
+  { word: 'вес',   meaning: 'weight',      emoji: '⚖️' },
+  { word: 'ток',   meaning: 'current (electric)', emoji: '⚡' },
+  { word: 'газ',   meaning: 'gas',         emoji: '💨' },
+  // School & tools
+  { word: 'мел',   meaning: 'chalk',       emoji: '🖊️' },
+  { word: 'том',   meaning: 'book volume', emoji: '📖' },
+  { word: 'знак',  meaning: 'sign',        emoji: '🔣' },
+  { word: 'код',   meaning: 'code',        emoji: '💻' },
+  { word: 'план',  meaning: 'plan',        emoji: '📋' },
+  { word: 'факт',  meaning: 'fact',        emoji: '📌' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let mode = null;
+let queue = [];
+let current = 0;
+let attempts = 0;
+let score = 0;
+let results = [];
+let synth = window.speechSynthesis;
+let currentItem = null;
+let revealed = false;
+
+// ============================================================
+// UTILS
+// ============================================================
+function shuffle(arr) {
+  let a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pick10Letters() {
+  return shuffle(LETTERS).slice(0, 10).map(l => ({ lower: l, upper: l.toUpperCase() }));
+}
+function pick10Words() {
+  // deduplicate by word
+  const unique = Object.values(WORDS.reduce((acc, w) => { acc[w.word] = w; return acc; }, {}));
+  return shuffle(unique).slice(0, 10);
+}
+function speak(text, lang, slow) {
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang || 'ru-RU';
+  utter.rate = slow ? (0.85 / 1.2) : 0.85;
+  utter.pitch = 1.1;
+  synth.speak(utter);
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+function showModeSelect() {
+  document.getElementById('modeSelectScreen').classList.remove('hidden');
+  document.getElementById('gameScreen').classList.add('hidden');
+  document.getElementById('resultsScreen').classList.add('hidden');
+}
+
+function startMode(m) {
+  mode = m;
+  document.getElementById('modeSelectScreen').classList.add('hidden');
+  document.getElementById('resultsScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  queue = mode === 'words' ? pick10Words() : pick10Letters();
+  current = 0; score = 0; results = [];
+  renderProgress();
+  loadQuestion();
+}
+
+// ============================================================
+// GAME
+// ============================================================
+function renderProgress() {
+  const row = document.getElementById('progressRow');
+  row.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const pip = document.createElement('div');
+    let cls = 'progress-pip';
+    if (results[i] === true)  cls += ' done';
+    else if (results[i] === false) cls += ' wrong';
+    else if (i === current)    cls += ' active';
+    pip.className = cls;
+    row.appendChild(pip);
+  }
+}
+
+function loadQuestion() {
+  attempts = 0;
+  revealed = false;
+  document.getElementById('dot0').className = 'attempt-dot';
+  document.getElementById('dot1').className = 'attempt-dot';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  const inp = document.getElementById('charInput');
+  inp.value = ''; inp.className = 'char-input'; inp.disabled = false;
+  document.getElementById('qNum').textContent = current + 1;
+  document.getElementById('scoreDisp').textContent = score;
+  renderProgress();
+  currentItem = queue[current];
+
+  const wordPic   = document.getElementById('wordPic');
+  const revZone   = document.getElementById('revealZone');
+  const revLetter = document.getElementById('revealLetter');
+  const revLabel  = document.getElementById('revealLabel');
+  const revHolder = document.getElementById('revealPlaceholder');
+  const wordHint  = document.getElementById('wordHint');
+  const instruction = document.getElementById('instruction');
+
+  if (mode === 'lower' || mode === 'upper') {
+    // Hide word elements
+    wordPic.classList.add('hidden');
+    wordHint.classList.add('hidden');
+    // Show reveal zone with placeholder (letter hidden until after submit)
+    revZone.classList.remove('hidden');
+    revHolder.classList.remove('hidden');
+    revLetter.classList.add('hidden');
+    revLetter.textContent = '';
+    revLabel.classList.add('hidden');
+    instruction.innerHTML = `Listen and type the <strong>${mode === 'lower' ? 'lowercase' : 'uppercase'}</strong> letter`;
+    speak(currentItem.lower, 'ru-RU');
+  } else {
+    // Word mode: show emoji, hide reveal zone
+    revZone.classList.add('hidden');
+    wordPic.classList.remove('hidden');
+    wordPic.textContent = currentItem.emoji;
+    wordHint.classList.remove('hidden');
+    wordHint.textContent = `"${currentItem.meaning}"`;
+    instruction.innerHTML = `Type the Russian word for this picture`;
+    speak(currentItem.word, 'ru-RU', true);
+  }
+
+  setTimeout(() => { document.getElementById('charInput').focus(); }, 100);
+}
+
+function speakCurrent() {
+  if (!currentItem) return;
+  speak(mode === 'words' ? currentItem.word : currentItem.lower, 'ru-RU', mode === 'words');
+}
+
+function revealLetter(letter, label) {
+  const revHolder = document.getElementById('revealPlaceholder');
+  const revLetter = document.getElementById('revealLetter');
+  const revLabel  = document.getElementById('revealLabel');
+  revHolder.classList.add('hidden');
+  revLetter.textContent = letter;
+  revLetter.classList.remove('hidden');
+  revLetter.classList.remove('animate');
+  void revLetter.offsetWidth; // reflow
+  revLetter.classList.add('animate');
+  revLabel.textContent = label;
+  revLabel.classList.remove('hidden');
+}
+
+function checkAnswer() {
+  if (current >= 10) return;
+  const inp = document.getElementById('charInput');
+  const val = inp.value.trim();
+  if (!val) return;
+
+  let correctAnswer;
+  if (mode === 'lower')  correctAnswer = currentItem.lower;
+  else if (mode === 'upper') correctAnswer = currentItem.upper;
+  else correctAnswer = currentItem.word;
+
+  const correct = mode === 'words'
+    ? val.toLowerCase() === correctAnswer
+    : val === correctAnswer;
+
+  if (correct) {
+    inp.className = 'char-input correct-flash';
+    setFeedback('✓ Correct!', 'ok');
+    score++;
+    results[current] = true;
+    if (mode !== 'words') revealLetter(correctAnswer, '✓ correct');
+    setTimeout(nextQuestion, mode === 'words' ? 700 : 900);
+  } else {
+    attempts++;
+    if (attempts === 1) {
+      document.getElementById('dot0').className = 'attempt-dot used';
+      inp.className = 'char-input shake';
+      setFeedback('Try again…', 'err');
+      inp.value = '';
+      setTimeout(() => { inp.className = 'char-input'; inp.focus(); }, 400);
+    } else {
+      document.getElementById('dot1').className = 'attempt-dot used';
+      inp.className = 'char-input shake';
+      setFeedback(`Answer: ${correctAnswer}`, 'hint');
+      inp.disabled = true;
+      results[current] = false;
+      if (mode !== 'words') revealLetter(correctAnswer, 'the answer');
+      setTimeout(nextQuestion, 1400);
+    }
+  }
+}
+
+function setFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = 'feedback ' + cls;
+}
+
+function nextQuestion() {
+  current++;
+  if (current >= 10) showResults();
+  else loadQuestion();
+}
+
+function showResults() {
+  document.getElementById('gameScreen').classList.add('hidden');
+  document.getElementById('resultsScreen').classList.remove('hidden');
+  document.getElementById('finalScore').innerHTML = `${score}<span>/10</span>`;
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const cell = document.createElement('div');
+    const ok = results[i] !== false;
+    cell.className = 'res-cell ' + (ok ? 'ok' : 'wrong');
+    const item = queue[i];
+    let label, sub;
+    if (mode === 'lower')      { label = item.lower; sub = item.lower; }
+    else if (mode === 'upper') { label = item.upper; sub = item.upper; }
+    else                       { label = item.emoji; sub = item.word; }
+    cell.innerHTML = `<span>${label}</span><span class="answer">${sub}</span><span class="mark">${ok ? '✓' : '✗'}</span>`;
+    grid.appendChild(cell);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('gameScreen').classList.contains('hidden')) {
+    checkAnswer();
+  }
+});
+
+showModeSelect();
+</script>
+</body>
+</html>
